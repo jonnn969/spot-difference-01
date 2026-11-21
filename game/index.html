@@ -1,0 +1,179 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Firefly Hollow — Spot the Difference</title>
+<style>
+  :root {
+    --ink: #f3ead8; --muted: #b9a98c; --gold: #f5c86b; --gold-deep: #d99a2b;
+    --panel: #221c33; --panel-line: #4a3f66; --bad: #ff6b6b; --good: #8be08b;
+    --bg: #14101f;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; background: var(--bg); color: var(--ink);
+    font-family: "Segoe UI", system-ui, -apple-system, sans-serif; }
+  body { min-height: 100vh; display: flex; flex-direction: column; align-items: center; }
+  .wrap { width: min(1280px, 100%); padding: 8px 14px 10px; display: flex; flex-direction: column; gap: 8px; }
+
+  header { display: flex; align-items: center; gap: 14px; }
+  .logo { font-family: Georgia, "Times New Roman", serif; font-size: 24px; letter-spacing: .5px; }
+  .logo b { color: var(--gold); }
+  .logo small { display: block; font-family: inherit; font-size: 11px; letter-spacing: 3px;
+    color: var(--muted); text-transform: uppercase; }
+  .chapters { display: flex; gap: 6px; margin-left: auto; }
+  .chapters button, .icon-btn {
+    background: #2a2340; color: var(--ink); border: 1px solid var(--panel-line);
+    border-radius: 999px; padding: 6px 12px; font-size: 13px; cursor: pointer; }
+  .chapters button.active { background: var(--gold); color: #241a05; border-color: var(--gold); font-weight: 700; }
+  .chapters button:hover, .icon-btn:hover { border-color: var(--gold); }
+  .icon-btn { padding: 6px 10px; }
+
+  .hud { display: flex; align-items: center; gap: 16px; background: var(--panel);
+    border: 1px solid var(--panel-line); border-radius: 12px; padding: 7px 14px; }
+  .hud .stat { font-size: 14px; white-space: nowrap; }
+  .hud .stat b { color: var(--gold); font-size: 17px; }
+  .hud .remaining { font-size: 15px; }
+  .hud .remaining b { color: var(--gold); font-size: 20px; }
+  .timer-wrap { flex: 1; display: flex; align-items: center; gap: 10px; }
+  .timer-bar { flex: 1; height: 10px; background: #171226; border-radius: 999px; overflow: hidden; }
+  .timer-fill { height: 100%; width: 100%; background: linear-gradient(90deg, #7fd4a8, var(--gold));
+    border-radius: 999px; transition: width .3s linear; }
+  .timer-fill.low { background: linear-gradient(90deg, #ff9d5c, var(--bad)); }
+  .timer-text { font-variant-numeric: tabular-nums; font-weight: 700; min-width: 52px; text-align: right; }
+  .timer-text.low { color: var(--bad); }
+
+  .stage { display: flex; gap: 12px; align-items: stretch; }
+  .panel { flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--panel-line);
+    border-radius: 14px; padding: 8px 8px 6px; position: relative; }
+  .panel .tag { position: absolute; top: 14px; left: 14px; z-index: 3; font-size: 11px;
+    letter-spacing: 2px; font-weight: 700; background: rgba(20,16,31,.72); color: var(--ink);
+    border: 1px solid var(--panel-line); padding: 3px 9px; border-radius: 999px; }
+  .panel svg { display: block; width: 100%; height: auto; border-radius: 9px; cursor: crosshair; }
+  .panel.shake svg { animation: shake .3s; }
+  @keyframes shake { 0%,100% { transform: translateX(0); } 25% { transform: translateX(-5px); }
+    75% { transform: translateX(5px); } }
+  .vs { align-self: center; font-family: Georgia, serif; font-size: 22px; color: var(--gold);
+    background: var(--panel); border: 1px solid var(--panel-line); border-radius: 50%;
+    width: 46px; height: 46px; display: flex; align-items: center; justify-content: center; flex: none; }
+
+  .found-mark circle { fill: rgba(245,200,107,.16); stroke: var(--gold); stroke-width: 3.5;
+    stroke-dasharray: 7 5; animation: pop .35s ease-out; }
+  .found-mark path { stroke: var(--gold); stroke-width: 4; fill: none; stroke-linecap: round;
+    stroke-linejoin: round; animation: pop .35s ease-out; }
+  @keyframes pop { from { transform: scale(.4); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+  .found-mark circle, .found-mark path { transform-box: fill-box; transform-origin: center; }
+  .wrong-mark line { stroke: var(--bad); stroke-width: 4; stroke-linecap: round; animation: fadeout 1s forwards; }
+  .wrong-mark circle { fill: none; stroke: var(--bad); stroke-width: 2.5; animation: fadeout 1s forwards; }
+  @keyframes fadeout { to { opacity: 0; } }
+  .hint-ring circle { fill: none; stroke: #9fd8ff; stroke-width: 4; stroke-dasharray: 6 6;
+    animation: spin 1.1s linear infinite, fadeout 2.6s forwards; transform-box: fill-box; transform-origin: center; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .below { display: flex; align-items: center; gap: 14px; }
+  .dots { display: flex; gap: 7px; }
+  .dots i { width: 15px; height: 15px; border-radius: 50%; background: #332a4d;
+    border: 1.5px solid var(--panel-line); display: block; }
+  .dots i.on { background: var(--gold); border-color: var(--gold); }
+  .hint-btn { background: #3a2f1d; color: var(--gold); border: 1px solid var(--gold-deep);
+    border-radius: 999px; padding: 7px 14px; font-size: 13px; cursor: pointer; font-weight: 700; }
+  .hint-btn:disabled { opacity: .4; cursor: default; }
+  .msg { flex: 1; text-align: center; font-size: 14px; color: var(--muted); min-height: 20px; }
+  .msg b { color: var(--gold); }
+  .keys { font-size: 11px; color: #7d7398; text-align: right; line-height: 1.5; }
+
+  .overlay { position: fixed; inset: 0; background: rgba(12,9,20,.86); display: flex;
+    align-items: center; justify-content: center; z-index: 10; padding: 20px; }
+  .overlay.hidden { display: none; }
+  .card { background: #241d38; border: 1px solid var(--panel-line); border-radius: 18px;
+    padding: 26px 30px; max-width: 620px; width: 100%; text-align: center; }
+  .card h1 { font-family: Georgia, serif; margin: 0 0 4px; font-size: 34px; }
+  .card h1 b { color: var(--gold); }
+  .card h2 { font-family: Georgia, serif; margin: 0 0 8px; font-size: 28px; }
+  .card p { color: var(--muted); font-size: 15px; line-height: 1.55; margin: 8px 0; }
+  .card .big { font-size: 19px; color: var(--ink); }
+  .card .big b { color: var(--gold); }
+  .chapter-cards { display: flex; gap: 10px; margin: 16px 0; }
+  .chapter-cards button { flex: 1; background: #2a2340; border: 1px solid var(--panel-line);
+    border-radius: 12px; padding: 12px 8px; color: var(--ink); cursor: pointer; font-size: 13px; }
+  .chapter-cards button:hover { border-color: var(--gold); }
+  .chapter-cards button b { display: block; font-size: 15px; color: var(--gold); margin-bottom: 3px; }
+  .cta { background: var(--gold); color: #241a05; border: none; border-radius: 999px;
+    padding: 12px 30px; font-size: 16px; font-weight: 800; cursor: pointer; margin-top: 6px; }
+  .cta:hover { filter: brightness(1.08); }
+  .ghost { background: transparent; color: var(--muted); border: 1px solid var(--panel-line);
+    border-radius: 999px; padding: 10px 20px; font-size: 14px; cursor: pointer; margin-top: 6px; }
+  .stars { font-size: 30px; letter-spacing: 4px; color: var(--gold); margin: 4px 0; }
+  #status { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header>
+    <div class="logo">Firefly <b>Hollow</b><small>Spot the Difference</small></div>
+    <nav class="chapters" id="chapterTabs" aria-label="Chapters"></nav>
+    <button class="icon-btn" id="soundBtn" title="Sound on/off (M)">🔊 Sound</button>
+    <button class="icon-btn" id="restartBtn" title="Restart chapter (R)">↻ Restart</button>
+  </header>
+
+  <div class="hud">
+    <span class="stat">Score <b id="score">0</b></span>
+    <span class="stat">Combo <b id="combo">×1</b></span>
+    <div class="timer-wrap">
+      <span aria-hidden="true">⏱</span>
+      <div class="timer-bar"><div class="timer-fill" id="timerFill"></div></div>
+      <span class="timer-text" id="timerText">3:00</span>
+    </div>
+    <span class="remaining">Remaining <b id="remaining">10</b></span>
+    <span class="stat">Found <b id="foundCount">0 / 10</b></span>
+  </div>
+
+  <main class="stage">
+    <section class="panel" aria-label="Original picture">
+      <span class="tag">ORIGINAL</span>
+      <svg id="panelLeft" viewBox="0 0 560 500" role="img" aria-label="Original picture"></svg>
+    </section>
+    <div class="vs" aria-hidden="true">VS</div>
+    <section class="panel" aria-label="Changed picture">
+      <span class="tag">CHANGED</span>
+      <svg id="panelRight" viewBox="0 0 560 500" role="img" aria-label="Changed picture"></svg>
+    </section>
+  </main>
+
+  <div class="below">
+    <div class="dots" id="dots" aria-label="Differences found"></div>
+    <button class="hint-btn" id="hintBtn" title="Hint (H)">💡 Hint (<span id="hintsLeft">3</span>)</button>
+    <div class="msg" id="message">Click a difference on either picture.</div>
+    <div class="keys">Click / tap to mark · H hint · R restart<br>1–3 chapters · M sound</div>
+  </div>
+</div>
+
+<div class="overlay" id="startOverlay">
+  <div class="card">
+    <h1>Firefly <b>Hollow</b></h1>
+    <p class="big">Two pictures. Ten tiny lies. One sharp pair of eyes.</p>
+    <p>Study the <b style="color:var(--ink)">ORIGINAL</b> and the <b style="color:var(--ink)">CHANGED</b> picture side by side.
+    Every difference hides in plain sight — a colour, a missing petal, a tilted telescope.
+    Click it on either picture to circle it. Wrong clicks cost points and break your combo.</p>
+    <div class="chapter-cards" id="chapterCards"></div>
+    <p>⏱ Beat the clock for a time bonus · 💡 3 hints per chapter · 🔍 10 differences per chapter</p>
+    <button class="cta" id="startBtn">Start the Hunt</button>
+  </div>
+</div>
+
+<div class="overlay hidden" id="endOverlay">
+  <div class="card">
+    <div class="stars" id="endStars">★★★</div>
+    <h2 id="endTitle">Chapter Complete!</h2>
+    <p class="big" id="endLine"></p>
+    <p id="endStats"></p>
+    <button class="cta" id="nextBtn">Next Chapter →</button>
+    <button class="ghost" id="againBtn">Play Again</button>
+    <button class="ghost" id="menuBtn">Chapter Menu</button>
+  </div>
+</div>
+
+<p id="status" role="status" aria-live="polite"></p>
+<script type="module" src="./src/main.js"></script>
+</body>
+</html>
