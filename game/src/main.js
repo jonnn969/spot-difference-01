@@ -117,12 +117,22 @@ function onPick(x, y, panel) {
   if (!state.playing || state.paused) return;
   sound.ensure();
   const svg = panel === 'left' ? leftSvg : rightSvg;
-  const hit = state.scene.differences.find((d) => {
-    if (state.found.has(d.id)) return false;
+  // Nearest unfound difference within its radius: two differences can sit
+  // close together (the garden's lantern and its firefly), so the closest
+  // one wins the click instead of whichever is listed first.
+  let hit = null;
+  let hitDistance = Infinity;
+  for (const d of state.scene.differences) {
+    if (state.found.has(d.id)) continue;
     const dx = x - d.x;
     const dy = y - d.y;
-    return dx * dx + dy * dy <= (d.r + 8) * (d.r + 8);
-  });
+    const distance = dx * dx + dy * dy;
+    const reach = d.r + 8;
+    if (distance <= reach * reach && distance < hitDistance) {
+      hit = d;
+      hitDistance = distance;
+    }
+  }
   if (hit) {
     state.found.add(hit.id);
     const points = CONFIG.pointsPerFind + (state.combo - 1) * CONFIG.comboStep;
